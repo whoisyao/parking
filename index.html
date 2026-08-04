@@ -45,11 +45,28 @@ button,select{font:inherit}
 .thumb{position:absolute;left:0;top:0;width:70px;height:59px;background:#fff;display:grid;place-items:center;color:#d7d7d7;font-size:38px;box-shadow:1px 0 4px rgba(0,0,0,.08)}
 .flash{animation:flash .24s 2}
 @keyframes flash{50%{filter:brightness(.72)}}
+.history-btn{position:absolute;right:18px;top:max(48px,calc(env(safe-area-inset-top) + 20px));border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:8px 12px;font-size:13px;z-index:3}
+.history-cover{position:absolute;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;z-index:30}
+.history-cover.show{display:flex}
+.history-sheet{width:100%;max-height:78svh;background:#f7f8fb;border-radius:20px 20px 0 0;padding:18px 16px max(18px,env(safe-area-inset-bottom));overflow:auto}
+.history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.history-head h2{margin:0;font-size:20px}
+.history-close{border:0;background:#e9edf5;border-radius:50%;width:34px;height:34px;font-size:22px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
+.summary-item{background:#fff;border-radius:10px;padding:9px 4px;text-align:center}
+.summary-item b{display:block;color:#3972f6;font-size:14px}.summary-item span{font-size:10px;color:#888}
+.history-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.history-actions button{height:40px;border:0;border-radius:9px;background:#3972f6;color:#fff}.history-actions button.danger{background:#fff;color:#e44;border:1px solid #f0c8c8}
+.record-list{display:flex;flex-direction:column;gap:7px}
+.record{background:#fff;border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:13px}
+.record .time{color:#888;font-size:11px}.record .total{font-size:17px;font-weight:700;color:#3972f6;grid-row:1/3;grid-column:2;align-self:center}
+.empty{text-align:center;color:#999;padding:35px 0}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="top"><div class="title">阿里智享停车</div></div>
+  <button class="history-btn" id="historyBtn">历史成绩</button>
   <div class="nav"><span>西溪A区⌄</span><span>我的记录　|　规则</span></div>
 
   <div class="main">
@@ -96,6 +113,20 @@ button,select{font:inherit}
     <div class="stat"><strong id="slideTime">--</strong><span>滑动耗时</span></div>
     <div class="stat"><strong id="best">--</strong><span>最佳总用时</span></div>
   </div>
+
+  <div class="history-cover" id="historyCover">
+    <div class="history-sheet">
+      <div class="history-head"><h2>训练记录</h2><button class="history-close" id="historyClose">×</button></div>
+      <div class="summary-grid">
+        <div class="summary-item"><b id="sumCount">0</b><span>完成轮数</span></div>
+        <div class="summary-item"><b id="sumBest">--</b><span>最佳</span></div>
+        <div class="summary-item"><b id="sumAvg">--</b><span>平均</span></div>
+        <div class="summary-item"><b id="sumP95">--</b><span>P95</span></div>
+      </div>
+      <div class="history-actions"><button id="exportBtn">导出备份</button><button class="danger" id="clearBtn">清空记录</button></div>
+      <div class="record-list" id="recordList"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -104,8 +135,13 @@ const app=$('app'),start=$('start'),mode=$('mode'),grab=$('grab');
 const cover=$('cover'),track=$('track'),thumb=$('thumb'),progress=$('progress');
 const countTitle=$('countTitle'),countdown=$('countdown');
 const reactionEl=$('reaction'),slideEl=$('slideTime'),bestEl=$('best');
+const historyBtn=$('historyBtn'),historyCover=$('historyCover'),historyClose=$('historyClose'),recordList=$('recordList');
+const sumCount=$('sumCount'),sumBest=$('sumBest'),sumAvg=$('sumAvg'),sumP95=$('sumP95'),exportBtn=$('exportBtn'),clearBtn=$('clearBtn');
 
-let state='idle',target=0,openedAt=0,clickedAt=0,raf=0,best=Infinity;
+const STORAGE_KEY='parking_training_records_v1';
+let records=[];
+try{records=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){records=[]}
+let state='idle',target=0,openedAt=0,clickedAt=0,raf=0,best=records.length?Math.min(...records.filter(r=>!r.falseStart).map(r=>r.totalMs)):Infinity;
 let dragging=false,startX=0,startPos=0;
 
 function pad(n,l=2){return String(n).padStart(l,'0')}
@@ -117,6 +153,10 @@ function formatRemain(ms){
   return `${pad(min)}:${pad(sec)}.${pad(milli,3)}`;
 }
 function fmt(ms){return Math.round(ms)+'ms'}
+function saveRecords(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records.slice(-500)))}
+function percentile(values,p){if(!values.length)return null;const a=[...values].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(p*a.length)-1)]}
+function refreshPersistentStats(){const ok=records.filter(r=>!r.falseStart&&Number.isFinite(r.totalMs));if(ok.length){best=Math.min(...ok.map(r=>r.totalMs));bestEl.textContent=fmt(best)}else{best=Infinity;bestEl.textContent='--'}}
+function renderHistory(){const ok=records.filter(r=>!r.falseStart&&Number.isFinite(r.totalMs));sumCount.textContent=ok.length;sumBest.textContent=ok.length?fmt(Math.min(...ok.map(r=>r.totalMs))):'--';sumAvg.textContent=ok.length?fmt(ok.reduce((a,r)=>a+r.totalMs,0)/ok.length):'--';sumP95.textContent=ok.length?fmt(percentile(ok.map(r=>r.totalMs),.95)):'--';recordList.innerHTML='';if(!records.length){recordList.innerHTML='<div class="empty">还没有训练记录</div>';return}records.slice().reverse().slice(0,100).forEach(r=>{const d=new Date(r.at);const item=document.createElement('div');item.className='record';item.innerHTML=r.falseStart?`<div><b>抢跑</b></div><div class="time">${d.toLocaleString()}</div><div class="total" style="color:#e44">失败</div>`:`<div><b>点击 ${fmt(r.reactionMs)} · 滑动 ${fmt(r.slideMs)}</b></div><div class="time">${d.toLocaleString()} · ${r.duration}s模式</div><div class="total">${fmt(r.totalMs)}</div>`;recordList.appendChild(item)})}
 function resetSlider(){
   thumb.style.transform='translateX(0px)';
   progress.style.width='0px';
@@ -162,6 +202,7 @@ function falseStart(){
   countTitle.textContent='还没有到开抢时间';
   app.classList.remove('flash');void app.offsetWidth;app.classList.add('flash');
   if(navigator.vibrate)navigator.vibrate([60,40,60]);
+  records.push({at:new Date().toISOString(),falseStart:true,duration:Number(mode.value)});saveRecords();
   setTimeout(begin,900);
 }
 grab.addEventListener('click',()=>{
@@ -184,13 +225,8 @@ function down(e){
   dragging=true;
   const p=e.touches?e.touches[0]:e;
   startX=p.clientX;
-  const transform=getComputedStyle(thumb).transform;
-  if(transform&&transform!=='none'){
-    const m=new DOMMatrixReadOnly(transform);
-    startPos=m.m41||0;
-  }else{
-    startPos=0;
-  }
+  const m=new DOMMatrixReadOnly(getComputedStyle(thumb).transform);
+  startPos=m.m41||0;
   e.preventDefault();
 }
 function drag(e){
@@ -209,6 +245,8 @@ function finish(){
   slideEl.textContent=fmt(slide);
   best=Math.min(best,total);
   bestEl.textContent=fmt(best);
+  records.push({at:new Date().toISOString(),falseStart:false,duration:Number(mode.value),reactionMs:clickedAt-openedAt,slideMs:slide,totalMs:total});
+  saveRecords();
   progress.style.width='100%';
   countdown.textContent=fmt(total);
   countTitle.textContent='本轮总用时';
@@ -222,6 +260,12 @@ thumb.addEventListener('mousedown',down);
 document.addEventListener('mousemove',drag);
 document.addEventListener('mouseup',up);
 start.addEventListener('click',begin);
+historyBtn.addEventListener('click',()=>{renderHistory();historyCover.classList.add('show')});
+historyClose.addEventListener('click',()=>historyCover.classList.remove('show'));
+historyCover.addEventListener('click',e=>{if(e.target===historyCover)historyCover.classList.remove('show')});
+clearBtn.addEventListener('click',()=>{if(confirm('确定清空全部训练记录吗？')){records=[];saveRecords();refreshPersistentStats();renderHistory()}});
+exportBtn.addEventListener('click',()=>{const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='停车训练记录-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
+refreshPersistentStats();
 </script>
 </body>
 </html>
