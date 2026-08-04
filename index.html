@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>抢车位手机版训练</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",Arial,sans-serif;background:#f5f6f8;color:#222;overflow:hidden}
+button,select{font:inherit}
+.app{height:100svh;max-width:430px;margin:auto;background:linear-gradient(#3e73f5 0 29%,#f5f6f8 38%);position:relative;overflow:hidden}
+.top{height:118px;padding:max(22px,env(safe-area-inset-top)) 22px 0;color:#fff}
+.title{font-size:24px;font-weight:600;margin-top:18px}
+.nav{height:80px;padding:17px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;font-size:20px}
+.main{padding:0 18px}
+.card{background:#fff;border-radius:7px;padding:26px 22px 22px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.035)}
+.label{font-size:17px;color:#999;font-weight:600}
+.spaces{font-size:67px;font-weight:700;line-height:1.08;margin:8px 0 15px}
+.online{font-size:17px;color:#555;margin-bottom:15px}
+.online b{background:#eef3ff;color:#3972ff;padding:6px 10px;border-radius:4px;margin:0 4px}
+.countdown-box{height:72px;margin:0 0 15px;border-radius:10px;background:#f4f7ff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.countdown-title{font-size:12px;color:#8d9ab4;margin-bottom:2px}
+.countdown{font-variant-numeric:tabular-nums;font-size:31px;font-weight:700;letter-spacing:.5px;color:#3972f6}
+.countdown.ready{color:#15a967}
+.grab{width:100%;height:56px;border:0;border-radius:31px;background:#aabff1;color:white;font-size:23px;box-shadow:0 2px 4px rgba(0,0,0,.09);touch-action:manipulation}
+.grab.ready{background:#3972f6}
+.grab:active{transform:scale(.985)}
+.plate{margin-top:14px;color:#666;font-size:17px}
+.panel{margin-top:13px;background:#fff;border-radius:7px;padding:16px;text-align:left;font-size:17px}
+.controls{position:absolute;left:18px;right:18px;bottom:max(84px,calc(env(safe-area-inset-bottom) + 72px));background:#fff;border-radius:11px;padding:10px;display:grid;grid-template-columns:1.25fr 1fr;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.controls select,.controls button{height:42px;border-radius:9px;border:1px solid #dce2ee;padding:0 9px;background:#fff}
+.controls button{border:0;background:#3972f6;color:#fff;font-weight:600}
+.stats{position:absolute;left:18px;right:18px;bottom:max(16px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#fff;border-radius:10px;padding:9px 3px;text-align:center;box-shadow:0 3px 12px rgba(0,0,0,.04)}
+.stat strong{display:block;font-size:16px;color:#3972f6;font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;color:#888}
+.cover{position:absolute;inset:0;background:rgba(0,0,0,.56);display:none;align-items:center;justify-content:center;padding:0 50px;z-index:10}
+.cover.show{display:flex}
+.modal{width:100%;height:280px;background:white;border-radius:12px;position:relative;padding:112px 16px 0;animation:show .07s ease-out}
+@keyframes show{from{opacity:.45;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.close{position:absolute;right:20px;top:17px;color:#d6d6d6;font-size:31px;line-height:1}
+.track{height:59px;background:#ddd;border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,.2) inset,0 0 6px rgba(0,0,0,.12);position:relative;overflow:hidden;touch-action:none;user-select:none}
+.progress{position:absolute;left:0;top:0;bottom:0;width:0;background:#dce9ff}
+.tracktext{position:absolute;inset:0;display:grid;place-items:center;color:#aaa;font-size:19px}
+.thumb{position:absolute;left:0;top:0;width:70px;height:59px;background:#fff;display:grid;place-items:center;color:#d7d7d7;font-size:38px;box-shadow:1px 0 4px rgba(0,0,0,.08)}
+.flash{animation:flash .24s 2}
+@keyframes flash{50%{filter:brightness(.72)}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top"><div class="title">阿里智享停车</div></div>
+  <div class="nav"><span>西溪A区⌄</span><span>我的记录　|　规则</span></div>
+
+  <div class="main">
+    <div class="card">
+      <div class="label">剩余车位</div>
+      <div class="spaces">31</div>
+      <div class="online">当前园区有 <b>1</b> 人同时在线</div>
+
+      <div class="countdown-box">
+        <div class="countdown-title" id="countTitle">距离 19:00 开抢</div>
+        <div class="countdown" id="countdown">01:00.000</div>
+      </div>
+
+      <button class="grab" id="grab">等待开抢</button>
+      <div class="plate">浙AFR2510 ✎</div>
+    </div>
+
+    <div class="panel">🔊　西溪A区公告：</div>
+    <div class="panel">▥　<b>手速排行</b></div>
+  </div>
+
+  <div class="controls">
+    <select id="mode">
+      <option value="5" selected>快速训练：5秒</option>
+      <option value="10">快速训练：10秒</option>
+      <option value="60">真实训练：60秒</option>
+    </select>
+    <button id="start">开始训练</button>
+  </div>
+
+  <div class="cover" id="cover">
+    <div class="modal">
+      <div class="close">×</div>
+      <div class="track" id="track">
+        <div class="progress" id="progress"></div>
+        <div class="tracktext">向右滑动验证</div>
+        <div class="thumb" id="thumb">»</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><strong id="reaction">--</strong><span>点击反应</span></div>
+    <div class="stat"><strong id="slideTime">--</strong><span>滑动耗时</span></div>
+    <div class="stat"><strong id="best">--</strong><span>最佳总用时</span></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const app=$('app'),start=$('start'),mode=$('mode'),grab=$('grab');
+const cover=$('cover'),track=$('track'),thumb=$('thumb'),progress=$('progress');
+const countTitle=$('countTitle'),countdown=$('countdown');
+const reactionEl=$('reaction'),slideEl=$('slideTime'),bestEl=$('best');
+
+let state='idle',target=0,openedAt=0,clickedAt=0,raf=0,best=Infinity;
+let dragging=false,startX=0,startPos=0;
+
+function pad(n,l=2){return String(n).padStart(l,'0')}
+function formatRemain(ms){
+  ms=Math.max(0,ms);
+  const min=Math.floor(ms/60000);
+  const sec=Math.floor((ms%60000)/1000);
+  const milli=Math.floor(ms%1000);
+  return `${pad(min)}:${pad(sec)}.${pad(milli,3)}`;
+}
+function fmt(ms){return Math.round(ms)+'ms'}
+function resetSlider(){
+  thumb.style.transform='translateX(0px)';
+  progress.style.width='0px';
+  dragging=false;
+}
+function begin(){
+  cancelAnimationFrame(raf);
+  cover.classList.remove('show');
+  resetSlider();
+  reactionEl.textContent='--';
+  slideEl.textContent='--';
+
+  target=performance.now()+Number(mode.value)*1000;
+  countTitle.textContent='距离 19:00 开抢';
+
+  state='waiting';
+  grab.textContent='等待开抢';
+  grab.classList.remove('ready');
+  tick();
+}
+function tick(){
+  if(state!=='waiting')return;
+  const remain=target-performance.now();
+  if(remain<=0){
+    countdown.textContent='00:00.000';
+    countdown.classList.add('ready');
+    countTitle.textContent='开抢时间已到';
+    grab.textContent='立即开抢';
+    grab.classList.add('ready');
+    openedAt=performance.now();
+    state='ready';
+    if(navigator.vibrate)navigator.vibrate(28);
+    return;
+  }
+  countdown.classList.remove('ready');
+  countdown.textContent=formatRemain(remain);
+  raf=requestAnimationFrame(tick);
+}
+function falseStart(){
+  state='penalty';
+  cancelAnimationFrame(raf);
+  countdown.textContent='抢跑';
+  countTitle.textContent='还没有到开抢时间';
+  app.classList.remove('flash');void app.offsetWidth;app.classList.add('flash');
+  if(navigator.vibrate)navigator.vibrate([60,40,60]);
+  setTimeout(begin,900);
+}
+grab.addEventListener('click',()=>{
+  if(state==='waiting')return falseStart();
+  if(state!=='ready')return;
+  clickedAt=performance.now();
+  reactionEl.textContent=fmt(clickedAt-openedAt);
+  state='sliding';
+  cover.classList.add('show');
+});
+function maxX(){return track.clientWidth-thumb.clientWidth}
+function move(x){
+  x=Math.max(0,Math.min(maxX(),x));
+  thumb.style.transform=`translateX(${x}px)`;
+  progress.style.width=(x+thumb.clientWidth)+'px';
+  if(x>=maxX()-2)finish();
+}
+function down(e){
+  if(state!=='sliding')return;
+  dragging=true;
+  const p=e.touches?e.touches[0]:e;
+  startX=p.clientX;
+  const transform=getComputedStyle(thumb).transform;
+  if(transform&&transform!=='none'){
+    const m=new DOMMatrixReadOnly(transform);
+    startPos=m.m41||0;
+  }else{
+    startPos=0;
+  }
+  e.preventDefault();
+}
+function drag(e){
+  if(!dragging||state!=='sliding')return;
+  const p=e.touches?e.touches[0]:e;
+  move(startPos+p.clientX-startX);
+  e.preventDefault();
+}
+function up(){dragging=false}
+function finish(){
+  if(state!=='sliding')return;
+  state='done';
+  const end=performance.now();
+  const slide=end-clickedAt;
+  const total=end-openedAt;
+  slideEl.textContent=fmt(slide);
+  best=Math.min(best,total);
+  bestEl.textContent=fmt(best);
+  progress.style.width='100%';
+  countdown.textContent=fmt(total);
+  countTitle.textContent='本轮总用时';
+  if(navigator.vibrate)navigator.vibrate([20,30,20]);
+  setTimeout(()=>cover.classList.remove('show'),320);
+}
+thumb.addEventListener('touchstart',down,{passive:false});
+document.addEventListener('touchmove',drag,{passive:false});
+document.addEventListener('touchend',up);
+thumb.addEventListener('mousedown',down);
+document.addEventListener('mousemove',drag);
+document.addEventListener('mouseup',up);
+start.addEventListener('click',begin);
+</script>
+</body>
+</html>
