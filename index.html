@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>抢车位训练 2.5</title>
+<title>抢车位训练 2.6</title>
 <style>html,body{margin:0;background:#f4f6f9}#loading{height:100vh;display:grid;place-items:center;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#667085}</style>
 </head>
 <body>
@@ -15,55 +15,26 @@
     let html=await (await fetch(url,{cache:'no-store'})).text();
 
     html=html
-      .replaceAll('抢车位训练 2.3','抢车位训练 2.5')
-      .replaceAll('移动到滑块','首次位移')
-      .replaceAll('弹窗后移动','弹窗后首次位移')
-      .replaceAll('popupShown=0,sliderTouched=0,raf=0','popupShown=0,sliderTouched=0,firstMovedAt=0,renderedX=0,lastRenderAt=0,raf=0')
-      .replaceAll("let settings={delayMode:'120',jitterMode:'small',players:500,seats:255,loadMode:'high'};", "let settings={delayMode:'120',jitterMode:'small',players:500,seats:255,loadMode:'high',feelMode:'realistic'};")
-      .replaceAll("popupShown=0;sliderTouched=0;dragging=false;","popupShown=0;sliderTouched=0;firstMovedAt=0;renderedX=0;lastRenderAt=0;dragging=false;")
-      .replaceAll(
-        '<div class="setting"><label>服务端拥堵强度</label><select id="loadMode"><option value="light">轻载</option><option value="medium">中载</option><option value="high" selected>高载</option></select></div>',
-        '<div class="setting"><label>服务端拥堵强度</label><select id="loadMode"><option value="light">轻载</option><option value="medium">中载</option><option value="high" selected>高载</option></select></div><div class="setting"><label>滑块手感</label><select id="feelMode"><option value="realistic" selected>真实手感（阻尼与轻微掉帧）</option><option value="smooth">顺滑模式</option></select><div style="font-size:12px;color:#8a94a6;margin-top:6px;line-height:1.5">真实模式包含 8px 启动阈值、约 30FPS 跟随、末端阻力和松手轻微回弹。</div></div>'
-      )
-      .replaceAll(
-        "setTimeout(()=>{if(state!=='opening')return;popupShown=performance.now();state='sliding';overlay.classList.add('show')},popupDelay())",
-        "setTimeout(()=>{if(state!=='opening')return;overlay.classList.add('show');requestAnimationFrame(()=>requestAnimationFrame(()=>{if(state!=='opening')return;popupShown=performance.now();state='sliding'}))},popupDelay())"
-      )
-      .replaceAll(
-        "if(!sliderTouched){sliderTouched=performance.now();$('touchSlider').textContent=fmt(sliderTouched-popupShown)}",
-        "if(!sliderTouched){sliderTouched=performance.now()}"
-      )
-      .replaceAll(
-        "function down(e){if(state!=='sliding')return;if(!sliderTouched){sliderTouched=performance.now()}dragging=true;const p=e.touches?e.touches[0]:e;startX=p.clientX;const t=getComputedStyle(thumb).transform;startPos=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;e.preventDefault()}",
-        "function down(e){if(state!=='sliding')return;if(!sliderTouched){sliderTouched=performance.now()}dragging=true;const p=e.touches?e.touches[0]:e;startX=p.clientX;const t=getComputedStyle(thumb).transform;startPos=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;renderedX=startPos;lastRenderAt=0;e.preventDefault()}"
-      )
-      .replaceAll(
-        "function move(e){if(!dragging)return;const p=e.touches?e.touches[0]:e;setPos(startPos+p.clientX-startX);e.preventDefault()}",
-        "function move(e){if(!dragging)return;const p=e.touches?e.touches[0]:e,raw=startPos+p.clientX-startX,now=performance.now();let x=raw;if(settings.feelMode==='realistic'){const delta=raw-startPos,sign=delta<0?-1:1,active=sign*Math.max(0,Math.abs(delta)-8),ratio=Math.max(0,Math.min(1,active/Math.max(1,maxX()))),resistance=1-.13*ratio,target=startPos+active*resistance;if(now-lastRenderAt<30){e.preventDefault();return}lastRenderAt=now;x=renderedX+(target-renderedX)*.7;if(raw>=startPos+maxX()+20)x=maxX();renderedX=x}if(!firstMovedAt&&Math.abs(x-startPos)>=3){firstMovedAt=performance.now();$('touchSlider').textContent=fmt(firstMovedAt-popupShown)}setPos(x);e.preventDefault()}"
-      )
-      .replaceAll(
-        "const end=performance.now(),reactionMs=clicked-opened,popupMs=popupShown-clicked,moveMs=sliderTouched-popupShown,dragMs=end-sliderTouched,humanMs=reactionMs+moveMs+dragMs,elapsedMs=end-opened,sim=simulate(elapsedMs);",
-        "const end=performance.now(),movedAt=firstMovedAt||sliderTouched,reactionMs=clicked-opened,popupMs=popupShown-clicked,moveMs=movedAt-popupShown,dragMs=end-movedAt,humanMs=reactionMs+moveMs+dragMs,elapsedMs=end-opened,sim=simulate(elapsedMs);"
-      )
-      .replaceAll('系统弹窗耗时','弹窗渲染完成')
-      .replaceAll('系统弹窗 ','弹窗渲染 ')
-      .replaceAll('主要损耗在弹窗出现后首次位移。','主要损耗在弹窗完成后启动滑块。')
-      .replaceAll(
-        "$('settingsBtn').onclick=()=>{$('delayMode').value=settings.delayMode;$('jitterMode').value=settings.jitterMode;$('players').value=settings.players;$('seats').value=settings.seats;$('loadMode').value=settings.loadMode;$('settingsCover').classList.add('show')};",
-        "$('settingsBtn').onclick=()=>{$('delayMode').value=settings.delayMode;$('jitterMode').value=settings.jitterMode;$('players').value=settings.players;$('seats').value=settings.seats;$('loadMode').value=settings.loadMode;$('feelMode').value=settings.feelMode||'realistic';$('settingsCover').classList.add('show')};"
-      )
-      .replaceAll(
-        "$('loadMode').onchange=e=>{settings.loadMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};",
-        "$('loadMode').onchange=e=>{settings.loadMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};$('feelMode').onchange=e=>{settings.feelMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};"
-      )
-      .replaceAll(
-        "document.addEventListener('touchend',()=>dragging=false);",
-        "function endDrag(){if(!dragging)return;dragging=false;if(settings.feelMode==='realistic'&&state==='sliding'){const t=getComputedStyle(thumb).transform,current=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;if(current<maxX())setPos(Math.max(0,current-6))}}document.addEventListener('touchend',endDrag);"
-      )
-      .replaceAll(
-        "document.addEventListener('mouseup',()=>dragging=false);",
-        "document.addEventListener('mouseup',endDrag);"
-      );
+      .replaceAll('抢车位训练 2.3','抢车位训练 2.6')
+      .replace('.timer-box{height:74px;background:#f3f6ff;border-radius:11px;display:grid;place-content:center;margin-bottom:14px}', '.timer-box{display:none}')
+      .replace('.grab{width:100%;height:58px;border:0;border-radius:32px;background:#aec1ee;color:#fff;font-size:clamp(20px,5.5vw,24px);font-weight:650}', '.grab{width:100%;height:58px;border:0;border-radius:32px;background:var(--blue);color:rgba(255,255,255,.92);font-size:clamp(19px,5.2vw,23px);font-weight:500;font-variant-numeric:tabular-nums}')
+      .replace('.grab.ready{background:var(--blue)}', '.grab.ready{background:var(--blue);color:#fff;font-weight:650}')
+      .replace('.verify-modal{position:absolute;width:min(calc(100vw - 104px),380px);height:280px;background:#fff;border-radius:13px;left:50%;top:var(--modal-top,40vh);transform:translate(-50%,var(--jitter,0px));padding:112px 16px 0;box-shadow:0 10px 32px rgba(0,0,0,.14)}', '.verify-modal{position:absolute;width:min(calc(100vw - 80px),400px);height:280px;background:#fff;border-radius:13px;left:50%;top:var(--modal-top,40vh);transform:translate(-50%,var(--jitter,0px));padding:112px 12px 0;box-shadow:0 10px 32px rgba(0,0,0,.14)}')
+      .replace('.progress{position:absolute;inset:0 auto 0 0;width:0;background:#dce9ff}', '.progress{position:absolute;inset:0 auto 0 0;width:0;background:#76cb25;z-index:1}')
+      .replace('.tracktext{position:absolute;inset:0;display:grid;place-items:center;color:#aaa;font-size:18px}', '.tracktext{position:absolute;inset:0;display:grid;place-items:center;color:#aaa;font-size:18px;z-index:0}')
+      .replace('.thumb{position:absolute;left:0;top:0;width:72px;height:60px;background:#fff;display:grid;place-items:center;color:#ccc;font-size:36px;box-shadow:1px 0 5px rgba(0,0,0,.1)}', '.thumb{position:absolute;left:0;top:0;width:58px;height:60px;background:#fff;display:grid;place-items:center;color:#ccc;font-size:34px;box-shadow:1px 0 5px rgba(0,0,0,.1);z-index:2}')
+      .replace('@media (min-width:700px){body{background:#e9edf4}', '@media (min-width:700px){body{background:#e9edf4}')
+      .replace('.verify-modal{width:490px;height:min(430px,calc(100vh - 40px));max-height:430px;padding:clamp(120px,31vh,205px) 28px 0;border-radius:14px}', '.verify-modal{width:540px;height:min(430px,calc(100vh - 40px));max-height:430px;padding:clamp(120px,31vh,205px) 22px 0;border-radius:14px}')
+      .replace('.thumb{height:64px;width:82px}', '.thumb{height:64px;width:104px}')
+      .replace('<div class="timer-box"><div class="timer-label" id="timerLabel">等待开始训练</div><div class="timer" id="timer">00:05.00</div></div><button class="grab" id="grab">等待开抢</button>', '<div class="timer-box"><div class="timer-label" id="timerLabel">等待开始训练</div><div class="timer" id="timer">00:05.000</div></div><button class="grab" id="grab">00:05.000后开抢</button>')
+      .replace("const timer=$('timer'),grab=$('grab'),overlay=$('overlay')", "const timer=$('timer'),grab=$('grab'),overlay=$('overlay')")
+      .replace("function clock10(ms){ms=Math.max(0,Math.ceil(ms/10)*10);return String(Math.floor(ms/60000)).padStart(2,'0')+':'+String(Math.floor(ms%60000/1000)).padStart(2,'0')+'.'+String(Math.floor(ms%1000/10)).padStart(2,'0')}", "function clock10(ms){ms=Math.max(0,Math.ceil(ms/10)*10);return String(Math.floor(ms/60000)).padStart(2,'0')+':'+String(Math.floor(ms%60000/1000)).padStart(2,'0')+'.'+String(Math.floor(ms%1000)).padStart(3,'0')}")
+      .replace("function applyCampus(){const c=campuses.find(x=>x.name===campus)||campuses[0];$('campusName').textContent=$('noticeCampus').textContent=c.name;$('spaces').textContent=c.spaces;localStorage.setItem(CK,c.name)}", "function applyCampus(){const c=campuses.find(x=>x.name===campus)||campuses[0];$('campusName').textContent=$('noticeCampus').textContent=c.name;$('spaces').textContent=c.spaces;$('online').textContent=286+Math.floor(Math.random()*227);localStorage.setItem(CK,c.name)}")
+      .replace("function begin(){cancelAnimationFrame(raf);reset();target=performance.now()+Number(mode.value)*1000;state='waiting';grab.textContent='等待开抢';grab.classList.remove('ready');timer.classList.remove('ready');$('timerLabel').textContent='距离 19:00 开抢';tick()}", "function begin(){clearTimeout(raf);reset();target=performance.now()+Number(mode.value)*1000;state='waiting';grab.classList.remove('ready');timer.classList.remove('ready');$('timerLabel').textContent='距离 19:00 开抢';grab.textContent=clock10(Number(mode.value)*1000)+'后开抢';tick()}")
+      .replace("function tick(){if(state!=='waiting')return;const remain=target-performance.now();if(remain<=0){timer.textContent='00:00.00';timer.classList.add('ready');$('timerLabel').textContent='开抢时间已到';grab.textContent='立即开抢';grab.classList.add('ready');opened=performance.now();state='ready';return}timer.textContent=clock10(remain);raf=requestAnimationFrame(tick)}", "function tick(){if(state!=='waiting')return;const remain=target-performance.now();if(remain<=0){timer.textContent='00:00.000';timer.classList.add('ready');$('timerLabel').textContent='开抢时间已到';grab.textContent='立即开抢';grab.classList.add('ready');opened=performance.now();state='ready';return}const shown=clock10(remain);timer.textContent=shown;grab.textContent=shown+'后开抢';raf=setTimeout(tick,10)}")
+      .replace("function reset(){overlay.classList.remove('show');thumb.style.transform='translateX(0)';progress.style.width='0';", "function reset(){overlay.classList.remove('show');sliderTouched=0;dragging=false;thumb.style.transform='translateX(0)';progress.style.width='0';")
+      .replace("progress.style.width=x+thumb.clientWidth+'px';if(x>=maxX()-2)finish()", "progress.style.width=x+'px';if(x>=maxX())finish()")
+      .replace("progress.style.width='100%';timer.textContent=fmt(total)", "progress.style.width=maxX()+'px';timer.textContent=fmt(total)");
 
     document.open();document.write(html);document.close();
   }catch(e){
