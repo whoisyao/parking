@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>抢车位训练 2.4</title>
+<title>抢车位训练 2.5</title>
 <style>html,body{margin:0;background:#f4f6f9}#loading{height:100vh;display:grid;place-items:center;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#667085}</style>
 </head>
 <body>
@@ -15,11 +15,16 @@
     let html=await (await fetch(url,{cache:'no-store'})).text();
 
     html=html
-      .replaceAll('抢车位训练 2.3','抢车位训练 2.4')
+      .replaceAll('抢车位训练 2.3','抢车位训练 2.5')
       .replaceAll('移动到滑块','首次位移')
       .replaceAll('弹窗后移动','弹窗后首次位移')
-      .replaceAll('popupShown=0,sliderTouched=0,raf=0','popupShown=0,sliderTouched=0,firstMovedAt=0,raf=0')
-      .replaceAll("popupShown=0;sliderTouched=0;dragging=false;","popupShown=0;sliderTouched=0;firstMovedAt=0;dragging=false;")
+      .replaceAll('popupShown=0,sliderTouched=0,raf=0','popupShown=0,sliderTouched=0,firstMovedAt=0,renderedX=0,lastRenderAt=0,raf=0')
+      .replaceAll("let settings={delayMode:'120',jitterMode:'small',players:500,seats:255,loadMode:'high'};", "let settings={delayMode:'120',jitterMode:'small',players:500,seats:255,loadMode:'high',feelMode:'realistic'};")
+      .replaceAll("popupShown=0;sliderTouched=0;dragging=false;","popupShown=0;sliderTouched=0;firstMovedAt=0;renderedX=0;lastRenderAt=0;dragging=false;")
+      .replaceAll(
+        '<div class="setting"><label>服务端拥堵强度</label><select id="loadMode"><option value="light">轻载</option><option value="medium">中载</option><option value="high" selected>高载</option></select></div>',
+        '<div class="setting"><label>服务端拥堵强度</label><select id="loadMode"><option value="light">轻载</option><option value="medium">中载</option><option value="high" selected>高载</option></select></div><div class="setting"><label>滑块手感</label><select id="feelMode"><option value="realistic" selected>真实手感（阻尼与轻微掉帧）</option><option value="smooth">顺滑模式</option></select><div style="font-size:12px;color:#8a94a6;margin-top:6px;line-height:1.5">真实模式包含 8px 启动阈值、约 30FPS 跟随、末端阻力和松手轻微回弹。</div></div>'
+      )
       .replaceAll(
         "setTimeout(()=>{if(state!=='opening')return;popupShown=performance.now();state='sliding';overlay.classList.add('show')},popupDelay())",
         "setTimeout(()=>{if(state!=='opening')return;overlay.classList.add('show');requestAnimationFrame(()=>requestAnimationFrame(()=>{if(state!=='opening')return;popupShown=performance.now();state='sliding'}))},popupDelay())"
@@ -29,8 +34,12 @@
         "if(!sliderTouched){sliderTouched=performance.now()}"
       )
       .replaceAll(
+        "function down(e){if(state!=='sliding')return;if(!sliderTouched){sliderTouched=performance.now()}dragging=true;const p=e.touches?e.touches[0]:e;startX=p.clientX;const t=getComputedStyle(thumb).transform;startPos=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;e.preventDefault()}",
+        "function down(e){if(state!=='sliding')return;if(!sliderTouched){sliderTouched=performance.now()}dragging=true;const p=e.touches?e.touches[0]:e;startX=p.clientX;const t=getComputedStyle(thumb).transform;startPos=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;renderedX=startPos;lastRenderAt=0;e.preventDefault()}"
+      )
+      .replaceAll(
         "function move(e){if(!dragging)return;const p=e.touches?e.touches[0]:e;setPos(startPos+p.clientX-startX);e.preventDefault()}",
-        "function move(e){if(!dragging)return;const p=e.touches?e.touches[0]:e,x=startPos+p.clientX-startX;if(!firstMovedAt&&Math.abs(x-startPos)>=3){firstMovedAt=performance.now();$('touchSlider').textContent=fmt(firstMovedAt-popupShown)}setPos(x);e.preventDefault()}"
+        "function move(e){if(!dragging)return;const p=e.touches?e.touches[0]:e,raw=startPos+p.clientX-startX,now=performance.now();let x=raw;if(settings.feelMode==='realistic'){const delta=raw-startPos,sign=delta<0?-1:1,active=sign*Math.max(0,Math.abs(delta)-8),ratio=Math.max(0,Math.min(1,active/Math.max(1,maxX()))),resistance=1-.13*ratio,target=startPos+active*resistance;if(now-lastRenderAt<30){e.preventDefault();return}lastRenderAt=now;x=renderedX+(target-renderedX)*.7;if(raw>=startPos+maxX()+20)x=maxX();renderedX=x}if(!firstMovedAt&&Math.abs(x-startPos)>=3){firstMovedAt=performance.now();$('touchSlider').textContent=fmt(firstMovedAt-popupShown)}setPos(x);e.preventDefault()}"
       )
       .replaceAll(
         "const end=performance.now(),reactionMs=clicked-opened,popupMs=popupShown-clicked,moveMs=sliderTouched-popupShown,dragMs=end-sliderTouched,humanMs=reactionMs+moveMs+dragMs,elapsedMs=end-opened,sim=simulate(elapsedMs);",
@@ -38,7 +47,23 @@
       )
       .replaceAll('系统弹窗耗时','弹窗渲染完成')
       .replaceAll('系统弹窗 ','弹窗渲染 ')
-      .replaceAll('主要损耗在弹窗出现后首次位移。','主要损耗在弹窗完成后启动滑块。');
+      .replaceAll('主要损耗在弹窗出现后首次位移。','主要损耗在弹窗完成后启动滑块。')
+      .replaceAll(
+        "$('settingsBtn').onclick=()=>{$('delayMode').value=settings.delayMode;$('jitterMode').value=settings.jitterMode;$('players').value=settings.players;$('seats').value=settings.seats;$('loadMode').value=settings.loadMode;$('settingsCover').classList.add('show')};",
+        "$('settingsBtn').onclick=()=>{$('delayMode').value=settings.delayMode;$('jitterMode').value=settings.jitterMode;$('players').value=settings.players;$('seats').value=settings.seats;$('loadMode').value=settings.loadMode;$('feelMode').value=settings.feelMode||'realistic';$('settingsCover').classList.add('show')};"
+      )
+      .replaceAll(
+        "$('loadMode').onchange=e=>{settings.loadMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};",
+        "$('loadMode').onchange=e=>{settings.loadMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};$('feelMode').onchange=e=>{settings.feelMode=e.target.value;localStorage.setItem(SK,JSON.stringify(settings))};"
+      )
+      .replaceAll(
+        "document.addEventListener('touchend',()=>dragging=false);",
+        "function endDrag(){if(!dragging)return;dragging=false;if(settings.feelMode==='realistic'&&state==='sliding'){const t=getComputedStyle(thumb).transform,current=t&&t!=='none'?new DOMMatrixReadOnly(t).m41:0;if(current<maxX())setPos(Math.max(0,current-6))}}document.addEventListener('touchend',endDrag);"
+      )
+      .replaceAll(
+        "document.addEventListener('mouseup',()=>dragging=false);",
+        "document.addEventListener('mouseup',endDrag);"
+      );
 
     document.open();document.write(html);document.close();
   }catch(e){
