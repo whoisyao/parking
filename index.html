@@ -29,7 +29,7 @@
 </div></div>
 <script>
 const $=id=>document.getElementById(id),K='parking_records_v4',OLD='parking_records_v3',SK='parking_settings_v2',CK='parking_campus_v1';
-const campuses=[{name:'云谷园区',spaces:31},{name:'菜鸟总部园区',spaces:18},{name:'高桥云港',spaces:12},{name:'西溪C区',spaces:25}];
+const campuses=[{name:'西溪A区',spaces:31},{name:'云谷园区',spaces:31},{name:'菜鸟总部园区',spaces:18},{name:'高桥云港',spaces:12},{name:'西溪C区',spaces:25}];
 let campus=localStorage.getItem(CK)||'云谷园区';let rec=[];try{rec=JSON.parse(localStorage.getItem(K)||localStorage.getItem(OLD)||'[]')}catch{}
 let settings={delayMode:'120',networkMode:'random450',jitterMode:'small'};try{settings={...settings,...JSON.parse(localStorage.getItem(SK)||'{}')}}catch{}
 let state='idle',target=0,opened=0,clicked=0,raf=0,dragging=false,sx=0,sp=0,currentNetwork=0;
